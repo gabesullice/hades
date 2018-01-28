@@ -12,74 +12,55 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package scanner_test
+package jq_test
 
 import (
 	"testing"
-	"unicode/utf8"
 
-	"github.com/savaki/jq/scanner"
+	"github.com/gabesullice/jq"
 )
 
-func BenchmarkString(t *testing.B) {
-	data := []byte(`"hello world"`)
+func BenchmarkChain(t *testing.B) {
+	op := jq.Chain(jq.Dot("a"), jq.Dot("b"))
+	data := []byte(`{"a":{"b":"value"}}`)
 
 	for i := 0; i < t.N; i++ {
-		end, err := scanner.String(data, 0)
+		_, err := op.Apply(data)
 		if err != nil {
-			t.FailNow()
-			return
-		}
-
-		if end == 0 {
 			t.FailNow()
 			return
 		}
 	}
 }
 
-func TestString(t *testing.T) {
+func TestChain(t *testing.T) {
 	testCases := map[string]struct {
-		In     string
-		Out    string
-		HasErr bool
+		In       string
+		Op       jq.Op
+		Expected string
+		HasError bool
 	}{
 		"simple": {
-			In:  `"hello"`,
-			Out: `"hello"`,
+			In:       `{"hello":"world"}`,
+			Op:       jq.Chain(jq.Dot("hello")),
+			Expected: `"world"`,
 		},
-		"array": {
-			In:  `"hello", "world"`,
-			Out: `"hello"`,
-		},
-		"escaped": {
-			In:  `"hello\"\"world"`,
-			Out: `"hello\"\"world"`,
-		},
-		"unclosed": {
-			In:     `"hello`,
-			HasErr: true,
-		},
-		"unclosed escape": {
-			In:     `"hello\"`,
-			HasErr: true,
-		},
-		"utf8": {
-			In:  `"生日快乐"`,
-			Out: `"生日快乐"`,
+		"nested": {
+			In:       `{"a":{"b":"world"}}`,
+			Op:       jq.Chain(jq.Dot("a"), jq.Dot("b")),
+			Expected: `"world"`,
 		},
 	}
 
 	for label, tc := range testCases {
 		t.Run(label, func(t *testing.T) {
-			end, err := scanner.String([]byte(tc.In), 0)
-			if tc.HasErr {
+			data, err := tc.Op.Apply([]byte(tc.In))
+			if tc.HasError {
 				if err == nil {
 					t.FailNow()
 				}
 			} else {
-				data := tc.In[0:end]
-				if string(data) != tc.Out {
+				if string(data) != tc.Expected {
 					t.FailNow()
 				}
 				if err != nil {
@@ -87,13 +68,5 @@ func TestString(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestDecode(t *testing.T) {
-	v := ""
-	_, size := utf8.DecodeRune([]byte(v))
-	if size != 0 {
-		t.FailNow()
 	}
 }

@@ -17,64 +17,58 @@ package scanner_test
 import (
 	"testing"
 
-	"github.com/savaki/jq/scanner"
+	"github.com/gabesullice/jq/scanner"
 )
 
-func BenchmarkFindIndex(t *testing.B) {
-	data := []byte(`["hello","world"]`)
+func BenchmarkAny(t *testing.B) {
+	data := []byte(`"Hello, 世界 - 生日快乐"`)
 
 	for i := 0; i < t.N; i++ {
-		data, err := scanner.FindIndex(data, 0, 1)
+		end, err := scanner.Any(data, 0)
 		if err != nil {
 			t.FailNow()
 			return
 		}
 
-		if string(data) != `"world"` {
+		if end == 0 {
 			t.FailNow()
 			return
 		}
 	}
 }
 
-func TestFindIndex(t *testing.T) {
+func TestAny(t *testing.T) {
 	testCases := map[string]struct {
-		In       string
-		Index    int
-		Expected string
-		HasErr   bool
+		In  string
+		Out string
 	}{
-		"simple": {
-			In:       `["hello","world"]`,
-			Index:    1,
-			Expected: `"world"`,
+		"string": {
+			In:  `"hello"`,
+			Out: `"hello"`,
 		},
-		"spaced": {
-			In:       ` [ "hello" , "world" ] `,
-			Index:    1,
-			Expected: `"world"`,
+		"array": {
+			In:  `["a","b","c"]`,
+			Out: `["a","b","c"]`,
 		},
-		"all types": {
-			In:       ` [ "hello" , 123, {"hello":"world"} ] `,
-			Index:    2,
-			Expected: `{"hello":"world"}`,
+		"object": {
+			In:  `{"a":"b"}`,
+			Out: `{"a":"b"}`,
+		},
+		"number": {
+			In:  `1.234e+10`,
+			Out: `1.234e+10`,
 		},
 	}
 
 	for label, tc := range testCases {
 		t.Run(label, func(t *testing.T) {
-			data, err := scanner.FindIndex([]byte(tc.In), 0, tc.Index)
-			if tc.HasErr {
-				if err == nil {
-					t.FailNow()
-				}
-			} else {
-				if string(data) != tc.Expected {
-					t.FailNow()
-				}
-				if err != nil {
-					t.FailNow()
-				}
+			end, err := scanner.Any([]byte(tc.In), 0)
+			if err != nil {
+				t.FailNow()
+			}
+			data := tc.In[0:end]
+			if string(data) != tc.Out {
+				t.FailNow()
 			}
 		})
 	}

@@ -12,55 +12,61 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package jq_test
+package scanner_test
 
 import (
 	"testing"
 
-	"github.com/savaki/jq"
+	"github.com/gabesullice/jq/scanner"
 )
 
-func BenchmarkChain(t *testing.B) {
-	op := jq.Chain(jq.Dot("a"), jq.Dot("b"))
-	data := []byte(`{"a":{"b":"value"}}`)
+func BenchmarkObject(t *testing.B) {
+	data := []byte(`{"hello":"world"}`)
 
 	for i := 0; i < t.N; i++ {
-		_, err := op.Apply(data)
+		end, err := scanner.Object(data, 0)
 		if err != nil {
+			t.FailNow()
+			return
+		}
+
+		if end == 0 {
 			t.FailNow()
 			return
 		}
 	}
 }
 
-func TestChain(t *testing.T) {
+func TestObject(t *testing.T) {
 	testCases := map[string]struct {
-		In       string
-		Op       jq.Op
-		Expected string
-		HasError bool
+		In     string
+		Out    string
+		HasErr bool
 	}{
 		"simple": {
-			In:       `{"hello":"world"}`,
-			Op:       jq.Chain(jq.Dot("hello")),
-			Expected: `"world"`,
+			In:  `{"hello":"world"}`,
+			Out: `{"hello":"world"}`,
 		},
-		"nested": {
-			In:       `{"a":{"b":"world"}}`,
-			Op:       jq.Chain(jq.Dot("a"), jq.Dot("b")),
-			Expected: `"world"`,
+		"empty": {
+			In:  `{}`,
+			Out: `{}`,
+		},
+		"spaced": {
+			In:  ` { "hello" : "world" } `,
+			Out: ` { "hello" : "world" }`,
 		},
 	}
 
 	for label, tc := range testCases {
 		t.Run(label, func(t *testing.T) {
-			data, err := tc.Op.Apply([]byte(tc.In))
-			if tc.HasError {
+			end, err := scanner.Object([]byte(tc.In), 0)
+			if tc.HasErr {
 				if err == nil {
 					t.FailNow()
 				}
 			} else {
-				if string(data) != tc.Expected {
+				data := tc.In[0:end]
+				if string(data) != tc.Out {
 					t.FailNow()
 				}
 				if err != nil {

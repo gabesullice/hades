@@ -2,14 +2,14 @@
 
 
 [[projects]]
-  branch = "master"
-  name = "github.com/savaki/jq"
+  branch = "rename-imports"
+  name = "github.com/gabesullice/jq"
   packages = [".","scanner"]
-  revision = "0e6baecebbf8a24a6590d3fc8232165008d6e5d8"
+  revision = "fb88fb9443665485a7172e8b6277dddcb2645e32"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c381ad5f60ee516c2a6e4f90cdd5c6821321525e84a39d135a049863c6658f08"
+  inputs-digest = "1f1e965109a0b8b918b0aeccca046fc1a2ba6a41a1121a983f01deaccc4b6b5c"
   solver-name = "gps-cdcl"
   solver-version = 1

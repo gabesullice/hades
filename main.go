@@ -6,8 +6,13 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"regexp"
 
-	"github.com/savaki/jq"
+	"github.com/gabesullice/jq"
+)
+
+var (
+	reArray = regexp.MustCompile(`^\s*\[\s*(\d+)(\s*:\s*(\d+))?\s*]\s*$`)
 )
 
 type PushProcessor struct {
@@ -45,7 +50,8 @@ func main() {
 	)
 	log.Fatalln(http.ListenAndServe(":8080", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var ops []jq.Op
-		for _, path := range os.Args[2:] {
+		for _, path := range r.Header["X-Push-Request"] {
+			log.Println(reArray.FindAllStringSubmatch(path, -1))
 			ops = append(ops, jq.Must(jq.Parse(path)))
 		}
 		backend.ServeHTTP(PushProcessor{

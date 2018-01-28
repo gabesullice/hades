@@ -22,5 +22,5 @@
 
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/savaki/jq"
+  branch = "rename-imports"
+  name = "github.com/gabesullice/jq"

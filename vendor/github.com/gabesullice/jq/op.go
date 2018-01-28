@@ -17,7 +17,7 @@ package jq
 import (
 	"strings"
 
-	"github.com/savaki/jq/scanner"
+	"github.com/gabesullice/jq/scanner"
 )
 
 // Op defines a single transformation to be applied to a []byte
@@ -79,5 +79,19 @@ func Index(index int) OpFunc {
 func Range(from, to int) OpFunc {
 	return func(in []byte) ([]byte, error) {
 		return scanner.FindRange(in, 0, from, to)
+	}
+}
+
+// From extracts all elements from the array provided from the given index onward, inclusive
+func From(from int) OpFunc {
+	return func(in []byte) ([]byte, error) {
+		return scanner.FindFrom(in, 0, from)
+	}
+}
+
+// To extracts all elements from the array provided up to the given index, inclusive
+func To(to int) OpFunc {
+	return func(in []byte) ([]byte, error) {
+		return scanner.FindTo(in, 0, to)
 	}
 }

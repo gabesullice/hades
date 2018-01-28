@@ -16,15 +16,16 @@ package scanner_test
 
 import (
 	"testing"
+	"unicode/utf8"
 
-	"github.com/savaki/jq/scanner"
+	"github.com/gabesullice/jq/scanner"
 )
 
-func BenchmarkAny(t *testing.B) {
-	data := []byte(`"Hello, 世界 - 生日快乐"`)
+func BenchmarkString(t *testing.B) {
+	data := []byte(`"hello world"`)
 
 	for i := 0; i < t.N; i++ {
-		end, err := scanner.Any(data, 0)
+		end, err := scanner.String(data, 0)
 		if err != nil {
 			t.FailNow()
 			return
@@ -37,39 +38,62 @@ func BenchmarkAny(t *testing.B) {
 	}
 }
 
-func TestAny(t *testing.T) {
+func TestString(t *testing.T) {
 	testCases := map[string]struct {
-		In  string
-		Out string
+		In     string
+		Out    string
+		HasErr bool
 	}{
-		"string": {
+		"simple": {
 			In:  `"hello"`,
 			Out: `"hello"`,
 		},
 		"array": {
-			In:  `["a","b","c"]`,
-			Out: `["a","b","c"]`,
+			In:  `"hello", "world"`,
+			Out: `"hello"`,
 		},
-		"object": {
-			In:  `{"a":"b"}`,
-			Out: `{"a":"b"}`,
+		"escaped": {
+			In:  `"hello\"\"world"`,
+			Out: `"hello\"\"world"`,
 		},
-		"number": {
-			In:  `1.234e+10`,
-			Out: `1.234e+10`,
+		"unclosed": {
+			In:     `"hello`,
+			HasErr: true,
+		},
+		"unclosed escape": {
+			In:     `"hello\"`,
+			HasErr: true,
+		},
+		"utf8": {
+			In:  `"生日快乐"`,
+			Out: `"生日快乐"`,
 		},
 	}
 
 	for label, tc := range testCases {
 		t.Run(label, func(t *testing.T) {
-			end, err := scanner.Any([]byte(tc.In), 0)
-			if err != nil {
-				t.FailNow()
-			}
-			data := tc.In[0:end]
-			if string(data) != tc.Out {
-				t.FailNow()
+			end, err := scanner.String([]byte(tc.In), 0)
+			if tc.HasErr {
+				if err == nil {
+					t.FailNow()
+				}
+			} else {
+				data := tc.In[0:end]
+				if string(data) != tc.Out {
+					t.FailNow()
+				}
+				if err != nil {
+					t.FailNow()
+				}
 			}
 		})
+	}
+}
+
+func TestDecode(t *testing.T) {
+	v := ""
+	_, size := utf8.DecodeRune([]byte(v))
+	if size != 0 {
+		t.FailNow()
 	}
 }

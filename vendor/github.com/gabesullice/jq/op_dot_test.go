@@ -12,66 +12,61 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package scanner_test
+package jq_test
 
 import (
 	"testing"
 
-	"github.com/savaki/jq/scanner"
+	"github.com/gabesullice/jq"
 )
 
-func BenchmarkArray(t *testing.B) {
-	data := []byte(`["hello","world"]`)
+func BenchmarkDot(t *testing.B) {
+	op := jq.Dot("hello")
+	data := []byte(`{"hello":"world"}`)
 
 	for i := 0; i < t.N; i++ {
-		end, err := scanner.Array(data, 0)
+		_, err := op.Apply(data)
 		if err != nil {
-			t.FailNow()
-			return
-		}
-
-		if end == 0 {
 			t.FailNow()
 			return
 		}
 	}
 }
 
-func TestArray(t *testing.T) {
+func TestDot(t *testing.T) {
 	testCases := map[string]struct {
-		In     string
-		Out    string
-		HasErr bool
+		In       string
+		Key      string
+		Expected string
+		HasError bool
 	}{
 		"simple": {
-			In:  `["hello","world"]`,
-			Out: `["hello","world"]`,
+			In:       `{"hello":"world"}`,
+			Key:      "hello",
+			Expected: `"world"`,
 		},
-		"empty": {
-			In:  `[]`,
-			Out: `[]`,
+		"key not found": {
+			In:       `{"hello":"world"}`,
+			Key:      "junk",
+			HasError: true,
 		},
-		"spaced": {
-			In:  ` [ "hello" , "world" ] `,
-			Out: ` [ "hello" , "world" ]`,
-		},
-		"all types": {
-			In:  ` [ "hello" , 123, {"hello":"world"} ] `,
-			Out: ` [ "hello" , 123, {"hello":"world"} ]`,
+		"unclosed value": {
+			In:       `{"hello":"world`,
+			Key:      "hello",
+			HasError: true,
 		},
 	}
 
 	for label, tc := range testCases {
 		t.Run(label, func(t *testing.T) {
-			end, err := scanner.Array([]byte(tc.In), 0)
-			if tc.HasErr {
+			op := jq.Dot(tc.Key)
+			data, err := op.Apply([]byte(tc.In))
+			if tc.HasError {
 				if err == nil {
 					t.FailNow()
 				}
-
 			} else {
-				data := tc.In[0:end]
-				if string(data) != tc.Out {
+				if string(data) != tc.Expected {
 					t.FailNow()
 				}
 				if err != nil {

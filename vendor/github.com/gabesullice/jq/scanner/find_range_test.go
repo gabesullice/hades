@@ -12,56 +12,75 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package jq_test
+package scanner_test
 
 import (
 	"testing"
 
-	"github.com/savaki/jq"
+	"github.com/gabesullice/jq/scanner"
 )
 
-func BenchmarkDot(t *testing.B) {
-	op := jq.Dot("hello")
-	data := []byte(`{"hello":"world"}`)
+func BenchmarkFindRange(t *testing.B) {
+	data := []byte(`["a","b","c","d","e"]`)
 
 	for i := 0; i < t.N; i++ {
-		_, err := op.Apply(data)
+		out, err := scanner.FindRange(data, 0, 1, 2)
 		if err != nil {
+			t.FailNow()
+			return
+		}
+
+		if string(out) != `["b","c"]` {
 			t.FailNow()
 			return
 		}
 	}
 }
 
-func TestDot(t *testing.T) {
+func TestFindRange(t *testing.T) {
 	testCases := map[string]struct {
 		In       string
-		Key      string
+		From     int
+		To       int
 		Expected string
-		HasError bool
+		HasErr   bool
 	}{
 		"simple": {
-			In:       `{"hello":"world"}`,
-			Key:      "hello",
-			Expected: `"world"`,
+			In:       `["a","b","c","d","e"]`,
+			From:     1,
+			To:       2,
+			Expected: `["b","c"]`,
 		},
-		"key not found": {
-			In:       `{"hello":"world"}`,
-			Key:      "junk",
-			HasError: true,
+		"single": {
+			In:       `["a","b","c","d","e"]`,
+			From:     1,
+			To:       1,
+			Expected: `["b"]`,
 		},
-		"unclosed value": {
-			In:       `{"hello":"world`,
-			Key:      "hello",
-			HasError: true,
+		"mixed": {
+			In:       `["a",{"hello":"world"},"c","d","e"]`,
+			From:     1,
+			To:       1,
+			Expected: `[{"hello":"world"}]`,
+		},
+		"ordering": {
+			In:     `["a",{"hello":"world"},"c","d","e"]`,
+			From:   1,
+			To:     0,
+			HasErr: true,
+		},
+		"out of bounds": {
+			In:     `["a",{"hello":"world"},"c","d","e"]`,
+			From:   1,
+			To:     20,
+			HasErr: true,
 		},
 	}
 
 	for label, tc := range testCases {
 		t.Run(label, func(t *testing.T) {
-			op := jq.Dot(tc.Key)
-			data, err := op.Apply([]byte(tc.In))
-			if tc.HasError {
+			data, err := scanner.FindRange([]byte(tc.In), 0, tc.From, tc.To)
+			if tc.HasErr {
 				if err == nil {
 					t.FailNow()
 				}
