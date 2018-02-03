@@ -15,6 +15,7 @@
 package jq
 
 import (
+	"bytes"
 	"strings"
 
 	"github.com/gabesullice/jq/scanner"
@@ -23,6 +24,7 @@ import (
 // Op defines a single transformation to be applied to a []byte
 type Op interface {
 	Apply([]byte) ([]byte, error)
+	Iterate([][]byte) ([]byte, error)
 }
 
 // OpFunc provides a convenient func type wrapper on Op
@@ -31,6 +33,35 @@ type OpFunc func([]byte) ([]byte, error)
 // Apply executes the transformation defined by OpFunc
 func (fn OpFunc) Apply(in []byte) ([]byte, error) {
 	return fn(in)
+}
+
+func (fn OpFunc) Iterate(in [][]byte) ([]byte, error) {
+	iterated := make([][]byte, len(in))
+	var err error
+	for i, _ := range in {
+		iterated[i], err = fn(in[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return bytes.Join(
+		[][]byte{
+			[]byte("["),
+			bytes.Join(iterated, []byte(",")),
+			[]byte("]"),
+		},
+		[]byte(""),
+	), nil
+}
+
+func Iterator(fn Op) OpFunc {
+	return func(in []byte) ([]byte, error) {
+		split, err := scanner.AsArray(in, 0)
+		if err != nil {
+			return nil, err
+		}
+		return fn.Iterate(split)
+	}
 }
 
 // Dot extract the specific key from the map provided; to extract a nested value, use the Dot Op in conjunction with the

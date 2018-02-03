@@ -67,6 +67,11 @@ func TestParse(t *testing.T) {
 			Op:       ".def.[1]",
 			Expected: `"b"`,
 		},
+		"interated index": {
+			In:       `[{"foo":"bar"},{"foo":"baz"}]`,
+			Op:       ".[].foo",
+			Expected: `["bar","baz"]`,
+		},
 		"nested range": {
 			In:       `{"abc":"-","def":["a","b","c"]}`,
 			Op:       ".def.[1:2]",
@@ -88,6 +93,7 @@ func TestParse(t *testing.T) {
 				}
 			} else {
 				if string(data) != tc.Expected {
+					t.Logf("op: %q", data)
 					t.FailNow()
 				}
 				if err != nil {

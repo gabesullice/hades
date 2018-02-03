@@ -36,24 +36,31 @@ func Must(op Op, err error) Op {
 
 // Parse takes a string representation of a selector and returns the corresponding Op definition
 func Parse(selector string) (Op, error) {
-	segments := strings.Split(selector, ".")
+	return transform(strings.Split(selector, ".")), nil
+}
 
+func transform(segments []string) Op {
 	ops := make([]Op, 0, len(segments))
-	for _, segment := range segments {
-		key := strings.TrimSpace(segment)
+
+	for k, _ := range segments {
+		key := strings.TrimSpace(segments[k])
 		if key == "" {
 			continue
 		}
 
 		if op, ok := parseArray(key); ok {
-			ops = append(ops, op)
-			continue
+			if k < len(segments)-1 {
+				ops = append(ops, Chain(op, Iterator(transform(segments[k+1:]))))
+			} else {
+				ops = append(ops, op)
+			}
+			break
 		}
 
 		ops = append(ops, Dot(key))
 	}
 
-	return Chain(ops...), nil
+	return Chain(ops...)
 }
 
 func parseArray(key string) (Op, bool) {

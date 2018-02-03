@@ -5,7 +5,7 @@
   branch = "rename-imports"
   name = "github.com/gabesullice/jq"
   packages = [".","scanner"]
-  revision = "fb88fb9443665485a7172e8b6277dddcb2645e32"
+  revision = "2f1db31d92127040bab202f0f0a4ee6977eb7c7c"
 
 [solve-meta]
   analyzer-name = "dep"
