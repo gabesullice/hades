@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/gabesullice/jq"
 )
@@ -33,7 +34,7 @@ func (p PushProcessor) Write(b []byte) (int, error) {
 	for _, op := range p.ops {
 		data, err := op.Apply(b)
 		if err != nil {
-			log.Println("Apply Error:", err)
+			continue
 		}
 
 		rw, ok := p.rw.(http.Pusher)
@@ -43,7 +44,11 @@ func (p PushProcessor) Write(b []byte) (int, error) {
 
 		var links []string
 		if err := json.Unmarshal(data, &links); err != nil {
-			log.Println("Unmarshal Error:", err)
+			var link string
+			if err := json.Unmarshal(data, &link); err != nil {
+				continue
+			}
+			links = append(links, link)
 		}
 
 		for _, link := range links {
@@ -74,15 +79,11 @@ func main() {
 
 func handler(backend *httputil.ReverseProxy) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var ops []jq.Op
-		for _, path := range r.Header["X-Push-Request"] {
-			ops = append(ops, jq.Must(jq.Parse(path)))
-		}
 		if _, ok := w.(http.Pusher); !ok {
 			log.Println("HTTP/2 is not supported by the client.")
 		}
 		backend.ServeHTTP(PushProcessor{
-			ops: ops,
+			ops: parsePaths(r.Header["X-Push-Request"]),
 			rw:  w,
 		}, r)
 	})
@@ -94,6 +95,19 @@ func chainDirectors(dirs ...func(*http.Request)) func(*http.Request) {
 			dirs[k](r)
 		}
 	}
+}
+
+func parsePaths(headers []string) []jq.Op {
+	var ops []jq.Op
+	for _, headerValues := range headers {
+		for _, path := range strings.Split(headerValues, ";") {
+			// Invalid paths are simply ignored.
+			if op, err := jq.Parse(strings.TrimSpace(path)); err == nil {
+				ops = append(ops, op)
+			}
+		}
+	}
+	return ops
 }
 
 func changeHost(d func(*http.Request), url *url.URL) func(*http.Request) {
