@@ -22,19 +22,22 @@ document.addEventListener("DOMContentLoaded", e => {
   const h = (links, {path, children}, buildOptions = true) => {
     const fetchOptions = buildOptions ? buildFetchOptions({path, children}) : {}
     return links.reduce((acc, link) => {
-      return children
+      return children && children.length
         ? children.reduce((acc, child) => {
           return acc.concat(
             g(link, path, fetchOptions).then(innerLinks => h(innerLinks, child, false))
           );
         }, [])
-        : g(link, path, fetchOptions)
+        : g(link, path, fetchOptions).then(innerLinks => {
+          innerLinks.forEach(innerLink => g(innerLink, null, {}))
+        })
     }, [])
   }
 
-  Promise.all(h(['/jsonapi/node/article'], {
-    path: "data.[].relationships.uid.links.self", children: [
-      {path: "data.links.self"},
+  Promise.all(h(['/jsonapi'], {
+    path: "links.node--article",
+    children: [
+      {path: "data.[].relationships.uid.links.self"},
     ],
   }))
 });
@@ -42,13 +45,16 @@ document.addEventListener("DOMContentLoaded", e => {
 function extract(data, path) {
   logDocument(data)
   extractors = {
+    "links.node--article": data => {
+      return [url2Path(data.links["node--article"])]
+    },
     "data.[].relationships.uid.links.self": data => {
       return data.data.map(item => {
         return url2Path(item.relationships.uid.links.self)
       })
     }
   }
-  return extractors.hasOwnProperty(path)
+  return path && extractors.hasOwnProperty(path)
     ? Promise.resolve(extractors[path](data))
     : Promise.reject(`The path "${path}" could not be found.`)
 }
