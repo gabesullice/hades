@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", e => {
   const f = (data, path) => {
-    return extract(data, path).catch(console.log)
+    logDocument(data)
+    return path ? extract(data, path).catch(console.log) : []
   }
 
   const g = (link, path, fetchOptions) => {
@@ -19,13 +20,14 @@ document.addEventListener("DOMContentLoaded", e => {
       })
   }
 
-  const h = (links, {path, children}, buildOptions = true) => {
+  const get = (link, {path, children}, buildOptions = true) => {
+    const links = Array.isArray(link) ? link : [link]
     const fetchOptions = buildOptions ? buildFetchOptions({path, children}) : {}
     return links.reduce((acc, link) => {
       return children && children.length
         ? children.reduce((acc, child) => {
           return acc.concat(
-            g(link, path, fetchOptions).then(innerLinks => h(innerLinks, child, false))
+            g(link, path, fetchOptions).then(innerLinks => get(innerLinks, child, false))
           );
         }, [])
         : g(link, path, fetchOptions).then(innerLinks => {
@@ -34,23 +36,27 @@ document.addEventListener("DOMContentLoaded", e => {
     }, [])
   }
 
-  Promise.all(h(['/jsonapi'], {
-    path: "links.node--article",
-    children: [
-      {path: "data.[].relationships.uid.links.self"},
-    ],
-  }))
-});
+  const thenGet = (path, children = false) => {
+    return children
+      ? {path, children}
+      : {path}
+  }
+
+  get('/jsonapi', thenGet("links.node--article", [
+    thenGet("data.[].relationships.uid.links.related", [
+      thenGet("data.links.self")
+    ]),
+  ]))
+})
 
 function extract(data, path) {
-  logDocument(data)
   extractors = {
     "links.node--article": data => {
       return [url2Path(data.links["node--article"])]
     },
-    "data.[].relationships.uid.links.self": data => {
+    "data.[].relationships.uid.links.related": data => {
       return data.data.map(item => {
-        return url2Path(item.relationships.uid.links.self)
+        return url2Path(item.relationships.uid.links.related)
       })
     }
   }
