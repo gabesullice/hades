@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -9,6 +12,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/gabesullice/jq"
 )
@@ -17,29 +21,53 @@ var (
 	reArray = regexp.MustCompile(`^\s*\[\s*(\d+)(\s*:\s*(\d+))?\s*]\s*$`)
 )
 
-type PushProcessor struct {
-	ops []jq.Op
-	rw  http.ResponseWriter
+type ResponseBuffer struct {
+	body *bytes.Buffer
+	w    http.ResponseWriter
 }
 
-func (p PushProcessor) Header() http.Header {
-	return p.rw.Header()
+func NewResponseBuffer(w http.ResponseWriter) ResponseBuffer {
+	var buf bytes.Buffer
+	return ResponseBuffer{
+		body: &buf,
+		w:    w,
+	}
 }
 
-func (p PushProcessor) WriteHeader(h int) {
-	p.rw.WriteHeader(h)
+func (b ResponseBuffer) Header() http.Header {
+	return b.w.Header()
 }
 
-func (p PushProcessor) Write(b []byte) (int, error) {
-	for _, op := range p.ops {
+func (b ResponseBuffer) WriteHeader(h int) {
+	b.w.WriteHeader(h)
+}
+
+func (b ResponseBuffer) Write(bs []byte) (int, error) {
+	return b.body.Write(bs)
+}
+
+func (b *ResponseBuffer) ReadAll() ([]byte, error) {
+	body := b.body.Bytes()
+	return ioutil.ReadAll(bytes.NewReader(body))
+}
+
+func (b *ResponseBuffer) Flush() {
+	io.Copy(b.w, bytes.NewReader(b.body.Bytes()))
+}
+
+func processPushes(ops map[string]jq.Op, b []byte, p http.Pusher) {
+	for part, op := range ops {
 		data, err := op.Apply(b)
 		if err != nil {
 			continue
 		}
 
-		rw, ok := p.rw.(http.Pusher)
-		if !ok {
-			log.Println("HTTP/2 is not supported")
+		trimmed := strings.TrimSpace(part)
+		var query string
+		if strings.Contains(trimmed, "?") {
+			query = "?" + strings.Split(trimmed, "?")[1]
+		} else {
+			query = ""
 		}
 
 		var links []string
@@ -53,27 +81,32 @@ func (p PushProcessor) Write(b []byte) (int, error) {
 
 		for _, link := range links {
 			if url, err := url.Parse(link); err == nil {
-				if err := rw.Push(url.Path, nil); err == nil {
-					log.Printf("Pushed: %s", url.Path)
+				push := url.Path + query
+				log.Printf("Pushing: %s", push)
+				opts := &http.PushOptions{
+					Header: http.Header{"X-Push": []string{"ON"}},
+				}
+				if err := p.Push(push, opts); err == nil {
+					log.Printf("Pushed: %s", push)
+				} else {
+					log.Printf("Push Error: %s", err)
 				}
 			}
 		}
 	}
-
-	return p.rw.Write(b)
 }
 
 func main() {
 	url, _ := url.Parse(os.Args[1])
 	log.Printf("Started proxy for %v", url)
 	backend := httputil.NewSingleHostReverseProxy(url)
-	backend.Director = chainDirectors(
-		//logRequest,
-		//logHeader,
-		changeHost(backend.Director, url),
-	)
-	http.Handle("/static/", http.FileServer(http.Dir(".")))
-	http.Handle("/", handler(backend))
+	d := backend.Director
+	backend.Director = func(r *http.Request) {
+		r.Header.Set("X-Forwarded-Proto", "https")
+		d(r)
+	}
+	http.Handle("/", http.FileServer(http.Dir(".")))
+	http.Handle("/jsonapi/", handler(backend))
 	log.Fatalln(http.ListenAndServeTLS(":443", "./server.crt", "./server.key", nil))
 }
 
@@ -82,49 +115,41 @@ func handler(backend *httputil.ReverseProxy) http.HandlerFunc {
 		if _, ok := w.(http.Pusher); !ok {
 			log.Println("HTTP/2 is not supported by the client.")
 		}
-		backend.ServeHTTP(PushProcessor{
-			ops: parsePaths(r.Header["X-Push-Request"]),
-			rw:  w,
-		}, r)
+		rb := NewResponseBuffer(w)
+		if r.Header.Get("X-Push") != "ON" {
+			time.Sleep(time.Millisecond * 150)
+		}
+		backend.ServeHTTP(rb, r)
+		p, ok := w.(http.Pusher)
+		if !ok {
+			log.Println("HTTP/2 is not supported")
+		}
+		ops := parsePaths(r.Header["X-Push-Please"])
+		if len(ops) > 0 {
+			if bs, err := rb.ReadAll(); err == nil {
+				processPushes(ops, bs, p)
+			}
+		}
+		rb.Flush()
 	})
 }
 
-func chainDirectors(dirs ...func(*http.Request)) func(*http.Request) {
-	return func(r *http.Request) {
-		for k, _ := range dirs {
-			dirs[k](r)
-		}
-	}
-}
-
-func parsePaths(headers []string) []jq.Op {
-	var ops []jq.Op
+func parsePaths(headers []string) map[string]jq.Op {
+	ops := make(map[string]jq.Op)
 	for _, headerValues := range headers {
-		for _, path := range strings.Split(headerValues, ";") {
+		for _, part := range strings.Split(headerValues, ";") {
 			// Invalid paths are simply ignored.
-			if op, err := jq.Parse(strings.TrimSpace(path)); err == nil {
-				ops = append(ops, op)
+			trimmed := strings.TrimSpace(part)
+			var path string
+			if strings.Contains(trimmed, "?") {
+				path = strings.Split(trimmed, "?")[0]
+			} else {
+				path = trimmed
+			}
+			if op, err := jq.Parse(path); err == nil {
+				ops[trimmed] = op
 			}
 		}
 	}
 	return ops
-}
-
-func changeHost(d func(*http.Request), url *url.URL) func(*http.Request) {
-	return func(r *http.Request) {
-		path := r.URL.Path
-		d(r)
-		r.Host = url.Host
-		r.URL = url
-		r.URL.Path = path
-	}
-}
-
-func logRequest(r *http.Request) {
-	dump, _ := httputil.DumpRequest(r, false)
-	log.Printf("%s", dump)
-}
-
-func logHeader(r *http.Request) {
-	log.Printf("%+v", r.Header["X-Push-Request"])
 }
