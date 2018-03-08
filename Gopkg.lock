@@ -4,12 +4,21 @@
 [[projects]]
   branch = "rename-imports"
   name = "github.com/gabesullice/jq"
-  packages = [".","scanner"]
+  packages = [
+    ".",
+    "scanner"
+  ]
   revision = "2f1db31d92127040bab202f0f0a4ee6977eb7c7c"
+
+[[projects]]
+  name = "github.com/satori/go.uuid"
+  packages = ["."]
+  revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
+  version = "v1.2.0"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1f1e965109a0b8b918b0aeccca046fc1a2ba6a41a1121a983f01deaccc4b6b5c"
+  inputs-digest = "67483caa2bd23a0aaa96c343b9a76fdb467749d280a4d2933a1ff48e58b96a5b"
   solver-name = "gps-cdcl"
   solver-version = 1
