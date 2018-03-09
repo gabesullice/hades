@@ -12,7 +12,6 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/gabesullice/jq"
 	"github.com/satori/go.uuid"
@@ -96,40 +95,6 @@ func (b *ResponseBuffer) Flush() {
 	b.body.Reset()
 }
 
-func getPushLinks(ops map[string]jq.Op, b []byte) []string {
-	var pushes []string
-	for part, op := range ops {
-		data, err := op.Apply(b)
-		if err != nil {
-			continue
-		}
-
-		trimmed := strings.TrimSpace(part)
-		var query string
-		if strings.Contains(trimmed, "?") {
-			query = "?" + strings.Split(trimmed, "?")[1]
-		} else {
-			query = ""
-		}
-
-		var links []string
-		if err := json.Unmarshal(data, &links); err != nil {
-			var link string
-			if err := json.Unmarshal(data, &link); err != nil {
-				continue
-			}
-			links = append(links, link)
-		}
-
-		for _, link := range links {
-			if url, err := url.Parse(link); err == nil {
-				pushes = append(pushes, url.RequestURI()+query)
-			}
-		}
-	}
-	return pushes
-}
-
 func main() {
 	url, _ := url.Parse(os.Args[1])
 	log.Printf("Started proxy for %v", url)
@@ -139,8 +104,6 @@ func main() {
 		r.Header.Set("X-Forwarded-Proto", "https")
 		d(r)
 	}
-	http.Handle("/lib/", http.FileServer(http.Dir(".")))
-	http.Handle("/dclient.html", http.FileServer(http.Dir(".")))
 	http.Handle("/", handler(backend))
 	log.Fatalln(http.ListenAndServeTLS(":443", "./server.crt", "./server.key", nil))
 }
@@ -148,10 +111,6 @@ func main() {
 func handler(backend *httputil.ReverseProxy) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		isPush := r.Header.Get("X-Push") == "ON"
-		// Introduce some artificial latency
-		if !isPush {
-			time.Sleep(time.Millisecond * 150)
-		}
 
 		if r.Header.Get("Accept") != "application/vnd.api+json" {
 			backend.ServeHTTP(w, r)
@@ -199,6 +158,40 @@ func handler(backend *httputil.ReverseProxy) http.HandlerFunc {
 			}
 		}
 	})
+}
+
+func getPushLinks(ops map[string]jq.Op, b []byte) []string {
+	var pushes []string
+	for part, op := range ops {
+		data, err := op.Apply(b)
+		if err != nil {
+			continue
+		}
+
+		trimmed := strings.TrimSpace(part)
+		var query string
+		if strings.Contains(trimmed, "?") {
+			query = "?" + strings.Split(trimmed, "?")[1]
+		} else {
+			query = ""
+		}
+
+		var links []string
+		if err := json.Unmarshal(data, &links); err != nil {
+			var link string
+			if err := json.Unmarshal(data, &link); err != nil {
+				continue
+			}
+			links = append(links, link)
+		}
+
+		for _, link := range links {
+			if url, err := url.Parse(link); err == nil {
+				pushes = append(pushes, url.RequestURI()+query)
+			}
+		}
+	}
+	return pushes
 }
 
 func parsePushPlease(please string) map[string]jq.Op {
