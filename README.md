@@ -68,6 +68,6 @@ any way. When the client recieves the initial response document, it should still
 request the subsequent documents just as it would under HTTP/1.1. However, these
 responses will already be in a local cache or already on the way!
 
-What this means is the the "waterfall" effect is removed and all responses
-should be reveived as if the client sent parallel requests for all resources at
+What this means is that Hades eliminates the "waterfall" 🔥. All responses
+should be reveived as if the client sent parallel requests for every resources at
 once.
