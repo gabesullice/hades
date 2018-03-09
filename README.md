@@ -30,7 +30,7 @@ Take a JSON API server with `issue`, `comment` and `user` resource types as an
 example. A client would like to list the 10 most recent issues and embed user
 avatars for every participant in the issue. In JSON API terms, issues have a
 relationship to comments and comments have an author relationship to users. User
-resources also a download URL attribute for each user's avatar.
+resources have an attribute that specifies a download URL for a user's avatar.
 
 `issue -> comment -> user -> avatar`
 
