@@ -51,7 +51,7 @@ This means that a client will first need to:
 1. Fetch the first 10 issues
 1. Fetch from the `related` or `relationship` routes for _each_ issue
 1. Fetch each the user resource for every unique user
-1. Finally, insert or download the fromt the avatar URL
+1. Finally, insert or download the avatar image using the user avatar URL
 
 This chain of requests is often called the "waterfall." Each step needs to be
 completed before the next step can proceed because the client can't know which
