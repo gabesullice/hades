@@ -57,13 +57,13 @@ This chain of requests is often called the "waterfall." Each step needs to be
 completed before the next step can proceed because the client can't know which
 resources to fetch in advance.
 
-In other words, the client can't know which users to fetch if it doesn't know which
-comments are on an issue... and the client can't know which comments to fetch without
-first fetching the issues.
+In other words, the client can't know which users to fetch if it doesn't know
+which comments are on an issue... and the client can't know which comments to
+fetch without first fetching the issues.
 
-Hades solves this problem. By specifying the following request, a client can inform
-the Hades proxy which resources _it's going to fetch_ and Hades can then proactively
-push those resources to the client.
+Hades solves this problem. By specifying the following request, a client can
+inform the Hades proxy which resources _it's going to fetch_ and Hades can then
+proactively push those resources to the client.
 
 ```
 GET /api/issues?sort=-created&page[limit]=10
@@ -81,12 +81,13 @@ IDs in the `X-Push-Please` header so that link paths can target only specific
 responses.
 
 Apart from the client-sent header, _client applications need not be adapted in
-any way_. When the client recieves the initial response document, it should still
-request the subsequent documents just as it would under HTTP/1.1.
+any way_. When the client recieves the initial response document, it should
+still request the subsequent documents just as it would under HTTP/1.1.
 
-However, because those request response will have already been pushed, they will
-already be in a local cache or on the way! That means all responses will appear to
-have been reveived as if the client sent all the requests at the same time.
+However, because those request responses will have already been pushed, they
+will already be in a local cache or on the way! That means all responses will
+appear to have been reveived as if the client sent all the requests at the same
+time.
 
 Hades eliminates the waterfall.
 
