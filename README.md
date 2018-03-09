@@ -42,7 +42,7 @@ In JSON API terms, the data model is structured such that:
 
 Traditionally, one might use the `include` query parameter to receive a compound
 document response. The compound document would embed the chain of resources in a
-sinlge response. However, in this scenario, issues do not support includes on
+single response. However, in this scenario, issues do not support includes on
 comments. They would be far too numerous&mdash;if 10 issues each have 100 comments,
 the compound document would have 1000 resources!
 
@@ -50,8 +50,8 @@ This means that a client will first need to:
 
 1. Fetch the first 10 issues
 1. Fetch from the `related` or `relationship` routes for _each_ issue
-1. Fetch each the user resource for every unique user
-1. Finally, insert or download the avatar image using the user avatar URL
+1. Fetch the user resource for each unique author
+1. Finally, download the user's avatar file using a download URL on the user resource
 
 This chain of requests is often called the "waterfall." Each step needs to be
 completed before the next step can proceed because the client can't know which
