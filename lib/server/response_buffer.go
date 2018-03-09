@@ -3,7 +3,6 @@ package server
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"net/http"
 )
 
@@ -32,9 +31,8 @@ func (b responseBuffer) Write(bs []byte) (int, error) {
 	return b.body.Write(bs)
 }
 
-func (b *responseBuffer) ReadAll() ([]byte, error) {
-	body := b.body.Bytes()
-	return ioutil.ReadAll(bytes.NewReader(body))
+func (b *responseBuffer) Bytes() []byte {
+	return b.body.Bytes()
 }
 
 func (b *responseBuffer) Flush() {

@@ -52,15 +52,14 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if pusher, ok := h.pushers.get(requestID); ok {
 			ops := parsePushPlease(r.Header.Get("X-Push-Please"))
 			if len(ops) > 0 {
-				if bs, err := rb.ReadAll(); err == nil {
-					if pushes := getPushLinks(ops, bs); len(pushes) > 0 {
-						headers := r.Header
-						headers.Set("X-Push", "ON")
-						headers.Set("X-Push-Request-ID", requestID)
-						opts := &http.PushOptions{Header: headers}
-						for _, target := range pushes {
-							pusher.push(target, opts)
-						}
+				bs := rb.Bytes()
+				if pushes := getPushLinks(ops, bs); len(pushes) > 0 {
+					headers := r.Header
+					headers.Set("X-Push", "ON")
+					headers.Set("X-Push-Request-ID", requestID)
+					opts := &http.PushOptions{Header: headers}
+					for _, target := range pushes {
+						pusher.push(target, opts)
 					}
 				}
 			}
