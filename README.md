@@ -1,7 +1,7 @@
 Hades
 ===
 
-Hades is a HATEOAS-based HTTP/2 reverse proxy for JSON API servers
+Hades is an *experimental* HATEOAS-based HTTP/2 reverse proxy for JSON API backends.
 
 ## Why?
 The JSON API specification makes ample use of `links` objects in its
