@@ -54,10 +54,12 @@ This means that a client will first need to:
 1. Finally, insert or download the fromt the avatar URL
 
 This chain of requests is often called the "waterfall." Each step needs to be
-completed before the next step can proceed, because the client can't know which
-resources to fetch in advance. In other words, the client can't know which users
-to fetch if it doesn't know which comments are on an issue... and the client can't
-know which comments to fetch without first fetching the issues.
+completed before the next step can proceed because the client can't know which
+resources to fetch in advance.
+
+In other words, the client can't know which users to fetch if it doesn't know which
+comments are on an issue... and the client can't know which comments to fetch without
+first fetching the issues.
 
 Hades solves this problem. By specifying the following request, a client can inform
 the Hades proxy which resources _it's going to fetch_ and Hades can then proactively
