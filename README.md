@@ -16,7 +16,7 @@ client even requests them_.
 Hades is a reverse proxy that can be deployed in front of any JSON API server.
 
 Clients that are HTTP/2 capable can then send an `X-Push-Please` request header.
-The value of the header should `;` delimited [JSONPath selectors](http://goessner.net/articles/JsonPath/index.html#e2) which target
+The values of this header should be [JSONPath selectors](http://goessner.net/articles/JsonPath/index.html#e2) which target
 links in the response document. Hades will identify these links and proactively
 push these links to the client.
 
