@@ -86,7 +86,7 @@ still request the subsequent documents just as it would under HTTP/1.1.
 
 However, because those request responses will have already been pushed, they
 will already be in a local cache or on the way! That means all responses will
-appear to have been reveived as if the client sent all the requests at the same
+appear to have been received as if the client sent all the requests at the same
 time.
 
 Hades eliminates the waterfall.
