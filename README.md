@@ -66,8 +66,11 @@ target only specific responses).
 Apart from the client-sent header, client applications need not be adapted in
 any way. When the client recieves the initial response document, it should still
 request the subsequent documents just as it would under HTTP/1.1. However, these
-responses will already be in a local cache or already on the way!
+responses will already be in a local cache or already on the way! In fact, all
+responses will appear to have been reveived as if the client sent parallel requests
+for every resources at once.
 
-What this means is that Hades eliminates the "waterfall" 🔥. All responses
-should be reveived as if the client sent parallel requests for every resources at
-once.
+
+What this means is that Hades eliminates the waterfall.
+
+🔥
